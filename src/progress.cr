@@ -7,6 +7,7 @@ class ProgressBar
   def initialize(@total = 100, @step = 1, @width = 100, @complete = "\u2593", @incomplete = "\u2591", use_stdout = false)
     @current = 0.0
     @output_stream = use_stdout ? STDOUT : STDERR
+    @start = Time.monotonic
   end
 
   def inc
@@ -54,12 +55,32 @@ class ProgressBar
 
   private def print(percent)
     @output_stream.flush
-    @output_stream.print "[#{@complete * position}#{@incomplete * (@width - position)}]  #{percent} % \r"
+    @output_stream.print "[#{@complete * position}#{@incomplete * remaining}]  #{percent} % Elapsed: #{round(elapsed)} ETA: #{eta}\r"
     @output_stream.flush
     @output_stream.print "\n" if done?
   end
 
   private def position
     ((@current.to_f * @width.to_f) / @total).to_i
+  end
+
+  private def remaining
+    @width - position
+  end
+
+  private def elapsed
+    Time.monotonic - @start
+  end
+
+  private def round(t)
+    Time::Span.new(seconds: t.total_seconds.to_i, nanoseconds: 0)
+  end
+
+  private def eta
+    if position > 0
+      round(elapsed * (remaining.to_f / position))
+    else
+      "--"
+    end
   end
 end
